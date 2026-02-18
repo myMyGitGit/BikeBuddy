@@ -1,76 +1,109 @@
 // use Nano
-// BikeBuddy
-const int echoPin=5;
-const int trigPin=6;
-const int sigPin=2;
-// for ranging
+// BikeBuddy 
+// Version 1.0 2-18-2026
+#define TESTMODE
+#ifdef TESTMODE
+  #define debugSerial(x) Serial.begin(9600)
+  #define debug(x)  Serial.print(x)
+  #define debugln(x) Serial.println(x)
+#else
+  #define debugSerial(x) 
+  #define debug(x)  
+  #define debugln(x) 
+#endif
+
+const int echo1Pin=2;
+const int trig1Pin=3;
+const int echo2Pin=4;
+const int trig2Pin=5;
+
+const int sigPin=6;  // MOTOR ON
+// for interval
 const int rngSw1 = 7;
-const int rngSw2 = 9;
-const int rngSw3 = 10;
+const int rngSw2 = 8;
+const int rngSw3 = 9;
+const int rngSw4 = 10;
 
 long duration;
 int distance;
- 
-int thresh = 100; //100; // 100 cm = 1000 mm = 1 meter=default
-#define InterValCheck 10000  //every 10 seconds
+#define defaultCheck 5000;
+int thresh = 300;  // 3 meters -- 300 cm
+int InterValCheck = defaultCheck;  //every 5 seconds
 void setup() {
-  pinMode(trigPin, OUTPUT); // Set TRIG as output
-  pinMode(echoPin, INPUT); // Set ECHO as input
+  pinMode(trig1Pin, OUTPUT); // Set TRIG as output
+  pinMode(echo1Pin, INPUT); // Set ECHO as input
+  pinMode(trig2Pin, OUTPUT); // Set TRIG as output
+  pinMode(echo2Pin, INPUT); // Set ECHO as input
+  
   pinMode(sigPin, OUTPUT);
   //
   pinMode(rngSw1, INPUT);
   pinMode(rngSw2, INPUT);
   pinMode(rngSw3, INPUT);
-  
+  pinMode(rngSw4, INPUT);
  
-  Serial.begin(9600); // Initialize serial communication
-  Serial.println("Test Ultra Sonic");
+  debugSerial(9600); // Initialize serial communication
+  debugln("Test Ultra Sonic");
   digitalWrite(sigPin, HIGH);
   delay(5000);
   digitalWrite(sigPin, LOW);
-  checkRangeAdjustments();
-  //testSensor();
+  
+  #ifdef TESTMODE
+  if(InterValCheck > 5000)
+  {
+    debug("InterValCheck = "); debugln(InterValCheck);
+     
+  }
+  #endif
 }
-void checkRangeAdjustments()
+void checkIntervalAdjustments()
 {
-  if(digitalRead(rngSw1)) thresh+=50;
-  if(digitalRead(rngSw2)) thresh+=50;
-  if(digitalRead(rngSw3)) thresh+=100;
+  debugln("Check Interval Switches");
+  InterValCheck = defaultCheck; // start at default value
+  if(digitalRead(rngSw1)) InterValCheck+=5000;
+  if(digitalRead(rngSw2)) InterValCheck+=5000;
+  if(digitalRead(rngSw3)) InterValCheck+=5000;
+  if(digitalRead(rngSw4)) InterValCheck+=5000;
+   
+    debug("InterValCheck = "); debugln(InterValCheck);
+   
+
+}
  
-}
-void execSensor()
+void execSensor(int echoSensor, int trigSensor)
 {
+  debugln("Check Sensor");
     // Clear TRIG pin
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trigSensor, LOW);
   delayMicroseconds(2);
   // Trigger ultrasonic pulse
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(trigSensor, HIGH);
   delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
+  digitalWrite(trigSensor, LOW);
   // Measure echo duration
-  duration = pulseIn(echoPin, HIGH);
+  duration = pulseIn(echoSensor, HIGH);
   // Calculate distance (cm)
-  distance = duration * 0.034 / 2;
-  // Print distance to Serial Monitor
-  Serial.print("Distance: ");
-  Serial.print(distance);
-  Serial.println(" cm");
-  Serial.print("Range is:"); Serial.println(thresh);
- 
-   if(distance > thresh)
+  distance = duration * 0.034 / 2;  
+  if(distance < thresh)
    {
-    Serial.println("distance > thresh");
-    delay(100);
+    debug ("distance calc = ");debug(distance);
+    debug(" thresh = ");debug(thresh);
+    debugln(" distance < thresh");
+    delay(10);    
     digitalWrite(sigPin, HIGH);
-   // delayMicroseconds(10);
+//    delayMicroseconds(10);
     delay(10000);
     // 
-    digitalWrite(sigPin, LOW); // turn off  
+    digitalWrite(sigPin, LOW); // turn off   
    }
-  delay(5000); // Wait before next measurement  
+ 
 } 
+
 void loop() {
-  delay(InterValCheck); //every ten seconds
+  checkIntervalAdjustments();
   
-  execSensor();
+  delay(InterValCheck);    
+  execSensor(echo1Pin, trig1Pin);
+  delay(10);
+  execSensor(echo2Pin, trig2Pin);
 }
